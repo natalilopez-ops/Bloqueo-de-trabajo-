@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bloqueo de Tiempo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--main:#f48fb1;--soft:#fff0f5;--ink:#4a2c3a}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:'Fredoka','Segoe UI',system-ui,sans-serif;background:var(--soft);color:var(--ink);transition:background .4s}
+.app{min-height:100%;display:grid;grid-template-columns:7fr 5fr;gap:0}
+@media(max-width:800px){.app{grid-template-columns:1fr}}
+section{padding:28px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{border:2px solid var(--main);background:#fff;color:var(--ink);border-radius:20px;padding:8px 16px;font:inherit;font-weight:500;cursor:pointer}
+.chip.on{background:var(--main);color:#fff}
+.chip:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#pj{font-size:90px;line-height:1;background:none;border:0;cursor:pointer;transition:transform .15s}
+#pj:active{transform:scale(1.2) rotate(-6deg)}
+#bubble{margin:0;font-style:italic;min-height:1.4em}
+.ring{position:relative;width:min(300px,80vw);aspect-ratio:1}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:14}
+.ring .bg{stroke:#fff}
+.ring .fg{stroke:var(--main);stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .4s}
+.ring .txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#time{font-size:clamp(44px,12vw,64px);font-weight:600}
+.btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.btn{font:inherit;font-weight:600;border-radius:14px;padding:12px 22px;cursor:pointer;border:2px solid var(--main);background:#fff;color:var(--ink)}
+.btn.main{background:var(--main);color:#fff}
+.btn:disabled{opacity:.6;cursor:default}
+h2{margin:0;font-size:28px}
+aside{width:100%;max-width:520px;display:flex;flex-direction:column;gap:14px}
+.add{display:flex;gap:8px}
+.add input{flex:1;font:inherit;padding:12px 14px;border:2px solid var(--main);border-radius:14px;background:#fff}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+li{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:8px 12px}
+li input{accent-color:var(--main);width:20px;height:20px}
+li span{flex:1;word-break:break-word}
+li.done span{text-decoration:line-through;opacity:.5}
+li button{background:none;border:0;font-size:18px;cursor:pointer}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.row button{background:none;border:0;color:var(--ink);text-decoration:underline;font:inherit;cursor:pointer}
+#game{display:none;text-align:center;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(3,96px);gap:10px;justify-content:center}
+.cell{width:96px;height:96px;border-radius:24px;border:0;background:#fff;font-size:48px;cursor:pointer;transition:background .1s}
+.cell.hit{background:var(--main)}
+.credits{margin:auto 0 0;padding-top:16px;font-weight:600;text-align:center}
+body.playing #tasks{display:none}
+body.playing #game{display:flex}
+</style>
+</head>
+<body>
+<main class="app">
+  <section>
+    <div class="chips" id="chars"></div>
+    <button id="pj" aria-label="Tocar al personaje"></button>
+    <p id="bubble">Toca al personaje 💕</p>
+    <div class="ring">
+      <svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" id="fg" cx="60" cy="60" r="52"/></svg>
+      <div class="txt"><div id="time">25:00</div><div id="mode">Enfoque</div></div>
+    </div>
+    <div class="chips" id="modes"></div>
+    <div class="btns">
+      <button class="btn main" id="start">▶ Iniciar</button>
+      <button class="btn" id="reset">↺ Reiniciar</button>
+      <button class="btn" id="toggleGame">🎮 Mini juego</button>
+    </div>
+    <div id="count"></div>
+  </section>
+
+  <section>
+    <aside id="tasks">
+      <h2>Mis tareas ✨</h2>
+      <form class="add" id="form"><input id="newTask" placeholder="Nueva tarea..." autocomplete="off" aria-label="Nueva tarea"><button class="btn main" type="submit">+</button></form>
+      <ul id="list"></ul>
+      <div class="row"><span id="prog"></span><button id="clear">Limpiar hechas</button></div>
+    </aside>
+
+    <aside id="game">
+      <h2>Atrapa al personaje 🎯</h2>
+      <p style="margin:0">Tócalo cuando aparezca. ¡Tienes 30 segundos!</p>
+      <div id="score" style="font-size:24px;font-weight:600"></div>
+      <div id="left"></div>
+      <div class="grid" id="grid"></div>
+      <button class="btn main" id="play">¡Empezar!</button>
+      <div id="best"></div>
+    </aside>
+    <p class="credits">Hecho por Alison Sarasty y Natali López · 10-4</p>
+  </section>
+</main>
+
+<script>
+const CHARS = {
+  "Gatita":   {e:"🐱", main:"#f48fb1", soft:"#fff0f5"},
+  "Conejito": {e:"🐰", main:"#b39ddb", soft:"#f5f0ff"},
+  "Perrito":  {e:"🐶", main:"#64b5f6", soft:"#eef7ff"},
+  "Osito":    {e:"🐻", main:"#ffb74d", soft:"#fff6e8"}
+};
+const MODES = {"Enfoque":25, "Descanso":5, "Descanso largo":15};
+const PHRASES = ["¡Tú puedes! 💪","Respira y sigue 🌸","¡Qué orgullo! ✨","Un pomodoro más 🍅","Agua y estiramiento 💧","¡Eres genial! 💕"];
+const $ = id => document.getElementById(id);
+const C = 2 * Math.PI * 52;
+
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+const st = {
+  char: load("char", "Gatita"), mode: "Enfoque", left: 25*60, running: false, timer: null,
+  pomos: 0, tasks: load("tasks", []), best: load("best", 0),
+  play: false, score: 0, gameLeft: 30, mole: -1, gameTimer: null
+};
+
+const fmt = s => String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+
+function beep() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    [0, .25, .5].forEach(t => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(a.destination);
+      g.gain.setValueAtTime(.2, a.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(.001, a.currentTime + t + .2);
+      o.start(a.currentTime + t); o.stop(a.currentTime + t + .2);
+    });
+  } catch {}
+}
+
+function theme() {
+  const c = CHARS[st.char];
+  document.documentElement.style.setProperty("--main", c.main);
+  document.documentElement.style.setProperty("--soft", c.soft);
+  $("pj").textContent = c.e;
+  $("chars").innerHTML = "";
+  Object.keys(CHARS).forEach(n => {
+    const b = document.createElement("button");
+    b.className = "chip" + (n === st.char ? " on" : "");
+    b.textContent = CHARS[n].e + " " + n;
+    b.onclick = () => { st.char = n; save("char", n); theme(); drawGame(); };
+    $("chars").appendChild(b);
+  });
+  $("modes").innerHTML = "";
+  Object.keys(MODES).forEach(m => {
+    const b = document.createElement("button");
+    b.className = "chip" + (m === st.mode ? " on" : "");
+    b.textContent = m;
+    b.onclick = () => setMode(m);
+    $("modes").appendChild(b);
+  });
+}
+
+function drawTimer() {
+  const total = MODES[st.mode] * 60;
+  $("time").textContent = fmt(st.left);
+  $("mode").textContent = st.mode;
+  $("fg").style.strokeDasharray = C;
+  $("fg").style.strokeDashoffset = C * (1 - st.left / total);
+  $("start").textContent = st.running ? "⏸ Pausar" : "▶ Iniciar";
+  $("count").textContent = "Pomodoros completados: " + st.pomos + " 🍅";
+  document.title = fmt(st.left) + " · " + st.mode;
+}
+
+function setMode(m) {
+  clearInterval(st.timer); st.running = false;
+  st.mode = m; st.left = MODES[m] * 60;
+  theme(); drawTimer();
+}
+
+function tick() {
+  st.left--;
+  if (st.left <= 0) {
+    clearInterval(st.timer); st.running = false; beep();
+    let next;
+    if (st.mode === "Enfoque") { st.pomos++; next = st.pomos % 4 === 0 ? "Descanso largo" : "Descanso"; }
+    else next = "Enfoque";
+    const done = st.mode;
+    setMode(next);
+    setTimeout(() => alert("¡Terminó " + done + "! " + CHARS[st.char].e + "\nSigue: " + next), 50);
+    return;
+  }
+  drawTimer();
+}
+
+$("start").onclick = () => {
+  st.running = !st.running;
+  clearInterval(st.timer);
+  if (st.running) st.timer = setInterval(tick, 1000);
+  drawTimer();
+};
+$("reset").onclick = () => setMode(st.mode);
+$("pj").onclick = () => { $("bubble").textContent = PHRASES[Math.floor(Math.random() * PHRASES.length)]; };
+
+/* ---------- Tareas ---------- */
+function drawTasks() {
+  const ul = $("list"); ul.innerHTML = "";
+  st.tasks.forEach((t, i) => {
+    const li = document.createElement("li"); if (t.done) li.className = "done";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = t.done;
+    cb.onchange = () => { t.done = cb.checked; save("tasks", st.tasks); drawTasks(); };
+    const sp = document.createElement("span"); sp.textContent = t.text;
+    const del = document.createElement("button"); del.textContent = "🗑"; del.setAttribute("aria-label", "Borrar tarea");
+    del.onclick = () => { st.tasks.splice(i, 1); save("tasks", st.tasks); drawTasks(); };
+    li.append(cb, sp, del); ul.appendChild(li);
+  });
+  const d = st.tasks.filter(t => t.done).length;
+  $("prog").textContent = st.tasks.length ? d + " de " + st.tasks.length + " completadas" : "Aún no hay tareas";
+}
+$("form").onsubmit = e => {
+  e.preventDefault();
+  const v = $("newTask").value.trim();
+  if (v) { st.tasks.push({text: v, done: false}); save("tasks", st.tasks); $("newTask").value = ""; drawTasks(); }
+};
+$("clear").onclick = () => { st.tasks = st.tasks.filter(t => !t.done); save("tasks", st.tasks); drawTasks(); };
+
+/* ---------- Mini juego ---------- */
+const cells = [];
+for (let i = 0; i < 9; i++) {
+  const b = document.createElement("button");
+  b.className = "cell"; b.setAttribute("aria-label", "Casilla " + (i + 1));
+  b.onclick = () => hit(i);
+  $("grid").appendChild(b); cells.push(b);
+}
+function drawGame() {
+  cells.forEach((b, i) => {
+    const on = i === st.mole;
+    b.classList.toggle("hit", on);
+    b.textContent = on ? CHARS[st.char].e : "";
+  });
+  $("score").textContent = "Puntos: " + st.score;
+  $("left").textContent = "Tiempo: " + Math.max(0, Math.round(st.gameLeft)) + " s";
+  $("best").textContent = "Mejor puntaje: " + st.best + " 🏆";
+  $("play").disabled = st.play;
+  $("play").textContent = st.play ? "Jugando..." : "¡Empezar!";
+}
+function moveMole(avoid) {
+  let n; do { n = Math.floor(Math.random() * 9); } while (n === avoid);
+  st.mole = n;
+}
+function step() {
+  if (!st.play) return;
+  if (st.gameLeft <= 0) return endGame();
+  moveMole(st.mole); drawGame();
+  const wait = Math.max(450, 950 - st.score * 20);  // se acelera
+  st.gameLeft -= wait / 1000;
+  st.gameTimer = setTimeout(step, wait);
+}
+function hit(i) {
+  if (st.play && i === st.mole) { st.score++; moveMole(i); drawGame(); }
+}
+function endGame() {
+  st.play = false; st.mole = -1; st.gameLeft = 0;
+  const record = st.score > st.best;
+  if (record) { st.best = st.score; save("best", st.best); }
+  drawGame();
+  setTimeout(() => alert("¡Se acabó el tiempo! 🎉\nHiciste " + st.score + " puntos" + (record ? " ¡Nuevo récord! 🏆" : "")), 50);
+}
+$("play").onclick = () => {
+  clearTimeout(st.gameTimer);
+  st.play = true; st.score = 0; st.gameLeft = 30; step();
+};
+$("toggleGame").onclick = () => {
+  const on = document.body.classList.toggle("playing");
+  $("toggleGame").textContent = on ? "📝 Volver a tareas" : "🎮 Mini juego";
+  if (!on) { clearTimeout(st.gameTimer); st.play = false; st.mole = -1; drawGame(); }
+};
+
+theme(); drawTimer(); drawTasks(); drawGame();
+</script>
+</body>
+</html>
